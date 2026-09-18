@@ -1,0 +1,10 @@
+services:
+  dsh:
+    build: .
+    container_name: deepseek-harness
+    ports:
+      - "3080:3080"
+    environment:
+      - DSH_PORT=3079
+      - PROXY_PORT=3080
+    restart: unless-stopped

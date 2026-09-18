@@ -3,7 +3,7 @@
 **一行命令，跑起 DeepSeek Harness。局域网可访问，无需折腾 token。**
 
 ```bash
-docker run -d -p 3080:3080 ghcr.io/<你的用户名>/deepseek-harness-docker:latest
+docker run -d -p 3080:3080 ghcr.io/yuaneg/deepseek-harness-docker:latest
 ```
 
 然后打开 http://127.0.0.1:3080 就能用了。
@@ -44,7 +44,7 @@ DSH 启动 (127.0.0.1:3079) → 打印带 token 的 URL
 **方式一：docker compose（推荐）**
 
 ```bash
-git clone https://github.com/<你的用户名>/deepseek-harness-docker.git
+git clone https://github.com/yuaneg/deepseek-harness-docker.git
 cd deepseek-harness-docker
 docker compose up -d
 ```
@@ -57,8 +57,8 @@ docker build -t dsh .
 docker run -d -p 3080:3080 --name dsh dsh
 
 # 或用 GitHub Packages 的镜像
-docker pull ghcr.io/<你的用户名>/deepseek-harness-docker:latest
-docker run -d -p 3080:3080 --name dsh ghcr.io/<你的用户名>/deepseek-harness-docker:latest
+docker pull ghcr.io/yuaneg/deepseek-harness-docker:latest
+docker run -d -p 3080:3080 --name dsh ghcr.io/yuaneg/deepseek-harness-docker:latest
 ```
 
 打开浏览器 → http://127.0.0.1:3080 → 开始用！

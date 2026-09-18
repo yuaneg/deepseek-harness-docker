@@ -96,10 +96,13 @@ http {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
 
-            # 禁用缓冲，确保实时响应（WebSocket、流式输出）
+            # 禁用缓冲，确保实时响应（WebSocket、SSE、流式输出）
             proxy_buffering off;
             proxy_request_buffering off;
             proxy_cache off;
+
+            # 明确告诉 nginx 不要缓冲（双保险）
+            proxy_set_header X-Accel-Buffering no;
 
             # 超时设置（7 天，支持超长 WebSocket 连接）
             proxy_connect_timeout 10s;

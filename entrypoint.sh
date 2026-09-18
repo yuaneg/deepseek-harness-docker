@@ -60,8 +60,27 @@ cat > /etc/nginx/nginx.conf << NGINX_EOF
 worker_processes auto;
 events { worker_connections 1024; }
 http {
+    # TCP 优化
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+
+    # Keep-alive 优化（长连接）
+    keepalive_timeout 75s;
+    keepalive_requests 10000;
+
+    # 大文件支持
+    client_max_body_size 100m;
+    client_body_buffer_size 10m;
+    client_header_buffer_size 16k;
+    large_client_header_buffers 4 32k;
+
     server {
         listen $PROXY_PORT;
+
+        # 禁用请求体大小限制（支持大文件上传）
+        client_max_body_size 0;
+
         location / {
             proxy_pass http://127.0.0.1:$DSH_PORT;
             proxy_http_version 1.1;
@@ -75,14 +94,22 @@ http {
             proxy_set_header Origin http://127.0.0.1:$DSH_PORT;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
 
             # 禁用缓冲，确保实时响应（WebSocket、流式输出）
             proxy_buffering off;
+            proxy_request_buffering off;
             proxy_cache off;
 
-            # 超时设置（WebSocket 长连接需要）
-            proxy_read_timeout 86400s;
-            proxy_send_timeout 86400s;
+            # 超时设置（7 天，支持超长 WebSocket 连接）
+            proxy_connect_timeout 10s;
+            proxy_read_timeout 604800s;
+            proxy_send_timeout 604800s;
+
+            # 缓冲区大小（支持大文件/大 WebSocket 帧）
+            proxy_buffer_size 64k;
+            proxy_buffers 8 64k;
+            proxy_busy_buffers_size 128k;
 
             $COOKIE_LINE
         }

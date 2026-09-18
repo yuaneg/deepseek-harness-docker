@@ -52,9 +52,10 @@ docker compose up -d
 **方式二：docker run**
 
 ```bash
-# 自己构建
-docker build -t dsh .
-docker run -d -p 3080:3080 --name dsh dsh
+# 自己构建（同时打 latest 和版本号两个 tag）
+DSH_TAG=dsh-v0.1.6-alpha.2
+docker build -t dsh:latest -t dsh:$DSH_TAG --build-arg DSH_TAG=$DSH_TAG .
+docker run -d -p 3080:3080 --name dsh dsh:latest
 
 # 或用 GitHub Packages 的镜像
 docker pull ghcr.io/yuaneg/deepseek-harness-docker:latest

@@ -96,6 +96,19 @@ http {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
 
+            # 强制上游返回未压缩内容（sub_filter 需要明文才能替换）
+            proxy_set_header Accept-Encoding "";
+
+            # 远程访问修复：让 DSH 前端认为始终是 loopback，启用设置面板
+            sub_filter_once off;
+            sub_filter_types text/javascript application/javascript text/html;
+            sub_filter 'isLoopbackHostname(pageLocation.hostname)' 'true';
+            sub_filter 'isLoopback: this.connection.isLoopback' 'isLoopback: true';
+            sub_filter 'isLoopback:connection.isLoopback' 'isLoopback:true';
+            sub_filter 'isLoopback:this.connection.isLoopback' 'isLoopback:true';
+            sub_filter 'isLoopback: transport?.ownsHost === true' 'isLoopback: true';
+            sub_filter 'isLoopback:transport?.ownsHost===true' 'isLoopback:true';
+
             # 禁用缓冲，确保实时响应（WebSocket、SSE、流式输出）
             proxy_buffering off;
             proxy_request_buffering off;

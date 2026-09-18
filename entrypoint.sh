@@ -101,7 +101,7 @@ http {
 
             # 远程访问修复：让 DSH 前端认为始终是 loopback，启用设置面板
             sub_filter_once off;
-            sub_filter_types text/javascript application/javascript text/html;
+            sub_filter_types text/javascript application/javascript;
             sub_filter 'isLoopbackHostname(pageLocation.hostname)' 'true';
             sub_filter 'isLoopback: this.connection.isLoopback' 'isLoopback: true';
             sub_filter 'isLoopback:connection.isLoopback' 'isLoopback:true';

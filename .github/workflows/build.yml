@@ -25,8 +25,12 @@ jobs:
             # 手动指定版本
             TAG="${{ inputs.dsh_tag }}"
           else
-            # 自动获取最新 release tag
-            TAG=$(curl -s https://api.github.com/repos/deepseek-ai/deepseek-harness/releases/latest | jq -r '.tag_name')
+            # 自动获取最新 tag（包括 pre-release）
+            TAG=$(curl -s https://api.github.com/repos/deepseek-ai/deepseek-harness/tags | jq -r '.[0].name')
+          fi
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "❌ 无法获取 DSH 版本"
+            exit 1
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "DSH 版本: $TAG"

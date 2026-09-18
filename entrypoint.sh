@@ -12,13 +12,25 @@ DSH_PID=$!
 # ── 2. 等待就绪 + 抓 token ──
 echo "[dsh] 等待 DSH 就绪 (127.0.0.1:$DSH_PORT) ..."
 TOKEN=""
+DSH_READY=0
 for i in $(seq 1 120); do
-  TOKEN=$(sed -n 's/.*token=\([A-Za-z0-9._~-]\{16,\}\).*/\1/p' /tmp/dsh-web.log 2>/dev/null | tail -1)
-  if node -e "fetch('http://127.0.0.1:$DSH_PORT/').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; then
-    echo "[dsh] DSH 就绪 (pid $DSH_PID)"
+  # 尝试从日志捕获 token
+  if [ -z "$TOKEN" ]; then
+    TOKEN=$(sed -n 's/.*token=\([A-Za-z0-9._~-]\{16,\}\).*/\1/p' /tmp/dsh-web.log 2>/dev/null | tail -1)
+  fi
+  # 检查 HTTP 是否就绪
+  if [ "$DSH_READY" -eq 0 ]; then
+    if node -e "fetch('http://127.0.0.1:$DSH_PORT/').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; then
+      echo "[dsh] DSH 就绪 (pid $DSH_PID)"
+      DSH_READY=1
+    fi
+  fi
+  # HTTP 就绪且 token 已捕获，退出循环
+  if [ "$DSH_READY" -eq 1 ] && [ -n "$TOKEN" ]; then
     break
   fi
-  if ! kill -0 "$DSH_PID" 2>/dev/null; then
+  # 如果 HTTP 还没就绪，检查进程是否还活着
+  if [ "$DSH_READY" -eq 0 ] && ! kill -0 "$DSH_PID" 2>/dev/null; then
     echo "[dsh] 错误：DSH 进程已退出"
     cat /tmp/dsh-web.log
     exit 1

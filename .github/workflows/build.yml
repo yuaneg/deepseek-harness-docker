@@ -40,7 +40,11 @@ jobs:
         run: |
           TAG="${{ steps.latest.outputs.tag }}"
           # 检查 GitHub Packages 是否已有该版本镜像
-          EXISTS=$(docker manifest inspect ghcr.io/${{ github.repository_owner }}/deepseek-harness-docker:$TAG 2>/dev/null && echo "yes" || echo "no")
+          if docker manifest inspect ghcr.io/${{ github.repository_owner }}/deepseek-harness-docker:$TAG >/dev/null 2>&1; then
+            EXISTS="yes"
+          else
+            EXISTS="no"
+          fi
           echo "exists=$EXISTS" >> $GITHUB_OUTPUT
 
           if [ "$EXISTS" = "yes" ] && [ -z "${{ inputs.dsh_tag }}" ]; then

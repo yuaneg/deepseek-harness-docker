@@ -4,37 +4,65 @@ set -e
 DSH_PORT="${DSH_PORT:-3079}"
 PROXY_PORT="${PROXY_PORT:-3080}"
 
+# 计时工具（秒级）
+START_TIME=$(date +%s)
+prev_time=$START_TIME
+log_time() {
+  NOW=$(date +%s)
+  TOTAL=$((NOW - START_TIME))
+  DELTA=$((NOW - prev_time))
+  prev_time=$NOW
+  echo "[timing] +${DELTA}s (total ${TOTAL}s) - $1"
+}
+
+log_time "===== entrypoint 开始 ====="
+
 # ── 1. 启动 DSH ──
 cd /dsh-src
+log_time "进入 /dsh-src"
+
 pnpm dsh web -- --port "$DSH_PORT" > /tmp/dsh-web.log 2>&1 &
 DSH_PID=$!
+log_time "pnpm dsh web 后台启动 (pid $DSH_PID)"
 
 # ── 2. 等待就绪 + 抓 token ──
 echo "[dsh] 等待 DSH 就绪 (127.0.0.1:$DSH_PORT) ..."
 TOKEN=""
 DSH_READY=0
+CHECK_COUNT=0
 for i in $(seq 1 120); do
+  CHECK_COUNT=$((CHECK_COUNT + 1))
+
   # 尝试从日志捕获 token
   if [ -z "$TOKEN" ]; then
     TOKEN=$(sed -n 's/.*token=\([A-Za-z0-9._~-]\{16,\}\).*/\1/p' /tmp/dsh-web.log 2>/dev/null | tail -1)
+    if [ -n "$TOKEN" ]; then
+      log_time "✓ token 已捕获 (第 ${CHECK_COUNT} 次循环)"
+    fi
   fi
+
   # 检查 HTTP 是否就绪
   if [ "$DSH_READY" -eq 0 ]; then
     if node -e "fetch('http://127.0.0.1:$DSH_PORT/').then(()=>process.exit(0)).catch(()=>process.exit(1))" 2>/dev/null; then
+      log_time "✓ DSH HTTP 就绪 (第 ${CHECK_COUNT} 次循环)"
       echo "[dsh] DSH 就绪 (pid $DSH_PID)"
       DSH_READY=1
     fi
   fi
+
   # HTTP 就绪且 token 已捕获，退出循环
   if [ "$DSH_READY" -eq 1 ] && [ -n "$TOKEN" ]; then
+    log_time "✓ 等待循环结束 (共 ${CHECK_COUNT} 次循环)"
     break
   fi
+
   # 如果 HTTP 还没就绪，检查进程是否还活着
   if [ "$DSH_READY" -eq 0 ] && ! kill -0 "$DSH_PID" 2>/dev/null; then
     echo "[dsh] 错误：DSH 进程已退出"
     cat /tmp/dsh-web.log
     exit 1
   fi
+
   sleep 1
 done
 
@@ -42,6 +70,7 @@ done
 AUTH_COOKIE=""
 if [ -n "$TOKEN" ]; then
   echo "[auth] 使用 token 换取会话 cookie..."
+  log_time "开始 token 交换 (启动 node -e)"
   AUTH_COOKIE=$(node -e "
     (async () => {
       const res = await fetch('http://127.0.0.1:$DSH_PORT/?token=$TOKEN', { redirect: 'manual' });
@@ -52,6 +81,7 @@ if [ -n "$TOKEN" ]; then
       }
     })();
   " 2>/dev/null)
+  log_time "✓ token 交换完成"
 
   if [ -n "$AUTH_COOKIE" ]; then
     echo "[auth] cookie 已获取"
@@ -68,6 +98,7 @@ if [ -n "$AUTH_COOKIE" ]; then
   COOKIE_LINE="proxy_set_header Cookie \"$AUTH_COOKIE\";"
 fi
 
+log_time "开始生成 nginx 配置"
 cat > /etc/nginx/nginx.conf << NGINX_EOF
 worker_processes auto;
 events { worker_connections 1024; }
@@ -126,7 +157,7 @@ http {
             proxy_request_buffering off;
             proxy_cache off;
 
-            # 明确告诉 nginx 不要缓冲（双保险）
+            # 明确告诉 nginx 不要 buffering（双保险）
             proxy_set_header X-Accel-Buffering no;
 
             # 超时设置（7 天，支持超长 WebSocket 连接）
@@ -145,11 +176,12 @@ http {
 }
 NGINX_EOF
 
-echo "[nginx] 配置已生成"
+log_time "✓ nginx 配置已生成"
 
 # ── 5. 清理 + 启动 nginx ──
 cleanup() { kill "$DSH_PID" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
 
 echo "[nginx] 启动：0.0.0.0:$PROXY_PORT → 127.0.0.1:$DSH_PORT"
+log_time "启动 nginx (前台运行)"
 nginx -g 'daemon off;'

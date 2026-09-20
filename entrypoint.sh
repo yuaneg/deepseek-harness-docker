@@ -21,9 +21,9 @@ log_time "===== entrypoint 开始 ====="
 cd /dsh-src
 log_time "进入 /dsh-src"
 
-pnpm dsh web -- --port "$DSH_PORT" > /tmp/dsh-web.log 2>&1 &
+node apps/cli/lib/bin.js web --port "$DSH_PORT" > /tmp/dsh-web.log 2>&1 &
 DSH_PID=$!
-log_time "pnpm dsh web 后台启动 (pid $DSH_PID)"
+log_time "DSH (预编译) 后台启动 (pid $DSH_PID)"
 
 # ── 2. 等待就绪 + 抓 token ──
 echo "[dsh] 等待 DSH 就绪 (127.0.0.1:$DSH_PORT) ..."

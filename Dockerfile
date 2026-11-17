@@ -2,7 +2,7 @@
 FROM node:24-bookworm AS builder
 ARG DSH_TAG=dsh-v0.1.6-alpha.2
 RUN corepack enable
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ git \
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ git curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth 1 --branch ${DSH_TAG} \
